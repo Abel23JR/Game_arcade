@@ -1,226 +1,263 @@
+html
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minijuego - El Gato (Tres en Raya)</title>
+  <title>Atrapa las Estrellas 🌟</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
     body {
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      padding: 20px;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-      text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
-    }
-
-    .status {
-      font-size: 1.2rem;
-      margin-bottom: 20px;
-      color: #00ffcc;
-      font-weight: 600;
-    }
-
-    .scoreboard {
-      display: flex;
-      gap: 30px;
-      margin-bottom: 25px;
-      background: rgba(255, 255, 255, 0.1);
-      padding: 10px 25px;
-      border-radius: 15px;
-      backdrop-filter: blur(5px);
-    }
-
-    .score {
-      text-align: center;
-    }
-
-    .score span {
-      display: block;
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
-
-    .board {
-      display: grid;
-      grid-template-columns: repeat(3, 100px);
-      grid-template-rows: repeat(3, 100px);
-      gap: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 15px;
-      border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-    }
-
-    .cell {
-      width: 100px;
-      height: 100px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.8rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      touch-action: none;
       user-select: none;
     }
-
-    .cell:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: scale(1.03);
-    }
-
-    .cell.x {
-      color: #ff4757;
-      text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
-    }
-
-    .cell.o {
-      color: #1e90ff;
-      text-shadow: 0 0 10px rgba(30, 144, 255, 0.8);
-    }
-
-    .btn-reset {
-      margin-top: 25px;
-      padding: 12px 30px;
-      font-size: 1rem;
-      font-weight: bold;
-      color: #1a1a2e;
-      background: #00ffcc;
-      border: none;
-      border-radius: 25px;
-      cursor: pointer;
-      box-shadow: 0 5px 15px rgba(0, 255, 204, 0.4);
-      transition: all 0.2s ease;
-    }
-
-    .btn-reset:hover {
-      background: #00cca3;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 255, 204, 0.6);
-    }
-
-    .btn-reset:active {
-      transform: translateY(0);
+    canvas {
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     }
   </style>
 </head>
-<body>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
 
-  <h1>🎮 El Gato</h1>
-  <div class="status" id="status">Turno del Jugador X</div>
+  <!-- Contenedor Principal -->
+  <div class="w-full max-w-md flex flex-col items-center gap-4">
+    
+    <!-- Encabezado con Instrucciones -->
+    <div class="text-center">
+      <h1 class="text-3xl font-bold text-amber-400 drop-shadow-md">🌟 Atrapa las Estrellas</h1>
+      <p class="text-sm text-slate-300 mt-1">
+        Mueve la cesta con el <span class="text-amber-300 font-semibold">mouse</span>, <span class="text-amber-300 font-semibold">pantalla táctil</span> o las <span class="text-amber-300 font-semibold">flechas (⬅️ ➡️)</span>.
+      </p>
+    </div>
 
-  <div class="scoreboard">
-    <div class="score">Jugador X: <span id="scoreX">0</span></div>
-    <div class="score">Jugador O: <span id="scoreO">0</span></div>
+    <!-- Panel de Marcador -->
+    <div class="w-full bg-slate-800/80 border border-slate-700 rounded-xl p-3 flex justify-around items-center backdrop-blur-sm">
+      <div class="text-center">
+        <span class="text-xs uppercase text-slate-400 font-bold block">Puntos</span>
+        <span id="score" class="text-2xl font-black text-amber-400">0</span>
+      </div>
+      <div class="h-8 w-px bg-slate-700"></div>
+      <div class="text-center">
+        <span class="text-xs uppercase text-slate-400 font-bold block">Récord</span>
+        <span id="highScore" class="text-2xl font-black text-emerald-400">0</span>
+      </div>
+    </div>
+
+    <!-- Lienzo del Juego -->
+    <div class="relative w-full flex justify-center">
+      <canvas id="gameCanvas" class="bg-slate-950 w-full max-w-[400px] h-[450px]"></canvas>
+
+      <!-- Pantalla de Inicio / Game Over -->
+      <div id="overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-4">
+        <div id="gameTitle" class="text-3xl font-extrabold text-amber-400">¡Listo para jugar!</div>
+        <p id="gameInstructions" class="text-slate-200 text-sm max-w-xs">
+          Atrapa todas las <strong class="text-amber-300">estrellas 🌟</strong> que puedas y evita las <strong class="text-red-400">bombas 💣</strong>.
+        </p>
+        <button id="startBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-full text-lg shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95">
+          ¡JUGAR AHORA!
+        </button>
+      </div>
+    </div>
+
+    <!-- Leyenda de Objetos -->
+    <div class="flex gap-6 text-xs text-slate-400 bg-slate-800/40 px-4 py-2 rounded-lg border border-slate-800">
+      <div class="flex items-center gap-1.5">
+        <span class="text-base">🌟</span> +10 Puntos
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-base">💣</span> Fin del Juego
+      </div>
+    </div>
+
   </div>
-
-  <div class="board" id="board">
-    <div class="cell" data-index="0"></div>
-    <div class="cell" data-index="1"></div>
-    <div class="cell" data-index="2"></div>
-    <div class="cell" data-index="3"></div>
-    <div class="cell" data-index="4"></div>
-    <div class="cell" data-index="5"></div>
-    <div class="cell" data-index="6"></div>
-    <div class="cell" data-index="7"></div>
-    <div class="cell" data-index="8"></div>
-  </div>
-
-  <button class="btn-reset" onclick="resetGame()">Reiniciar Juego</button>
 
   <script>
-    let boardState = ["", "", "", "", "", "", "", "", ""];
-    let currentPlayer = "X";
-    let gameActive = true;
-    let scoreX = 0;
-    let scoreO = 0;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const gameTitle = document.getElementById('gameTitle');
+    const gameInstructions = document.getElementById('gameInstructions');
+    const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('highScore');
 
-    const winningConditions = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8],
-      [0, 3, 6], [1, 4, 7], [2, 5, 8],
-      [0, 4, 8], [2, 4, 6]
-    ];
+    // Ajustar dimensiones internas del canvas
+    function resizeCanvas() {
+      canvas.width = 400;
+      canvas.height = 450;
+    }
+    resizeCanvas();
 
-    const cells = document.querySelectorAll('.cell');
-    const statusText = document.getElementById('status');
+    // Estado del Juego
+    let isPlaying = false;
+    let score = 0;
+    let highScore = localStorage.getItem('star_catcher_highscore') || 0;
+    highScoreEl.textContent = highScore;
 
-    cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+    // Configuración de la Cesta (Jugador)
+    const player = {
+      width: 70,
+      height: 18,
+      x: canvas.width / 2 - 35,
+      y: canvas.height - 35,
+      speed: 7,
+      dx: 0
+    };
 
-    function handleCellClick(e) {
-      const clickedCell = e.target;
-      const index = parseInt(clickedCell.getAttribute('data-index'));
+    // Colecciones de Objetos
+    let items = [];
+    let spawnTimer = 0;
+    let spawnInterval = 45; // Frecuencia con la que caen los objetos
 
-      if (boardState[index] !== "" || !gameActive) return;
+    // Teclado
+    const keys = { right: false, left: false };
 
-      boardState[index] = currentPlayer;
-      clickedCell.textContent = currentPlayer;
-      clickedCell.classList.add(currentPlayer.toLowerCase());
+    // Eventos de Controles
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+      if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    });
 
-      checkResult();
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+      if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    });
+
+    // Control con Mouse / Pantalla Táctil
+    function updatePlayerPosition(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const canvasX = (clientX - rect.left) * scaleX;
+      player.x = canvasX - player.width / 2;
+      
+      // Mantener dentro del canvas
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
     }
 
-    function checkResult() {
-      let roundWon = false;
+    canvas.addEventListener('mousemove', (e) => {
+      if (isPlaying) updatePlayerPosition(e.clientX);
+    });
 
-      for (let i = 0; i < winningConditions.length; i++) {
-        const [a, b, c] = winningConditions[i];
-        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-          roundWon = true;
-          break;
-        }
+    canvas.addEventListener('touchmove', (e) => {
+      if (isPlaying && e.touches.length > 0) {
+        updatePlayerPosition(e.touches[0].clientX);
       }
+    });
 
-      if (roundWon) {
-        statusText.textContent = ¡El Jugador ${currentPlayer} ha ganado! 🎉;
-        gameActive = false;
-        if (currentPlayer === "X") {
-          scoreX++;
-          document.getElementById('scoreX').textContent = scoreX;
-        } else {
-          scoreO++;
-          document.getElementById('scoreO').textContent = scoreO;
-        }
-        return;
-      }
-
-      if (!boardState.includes("")) {
-        statusText.textContent = "¡Empate! 🤝";
-        gameActive = false;
-        return;
-      }
-
-      currentPlayer = currentPlayer === "X" ? "O" : "X";
-      statusText.textContent = Turno del Jugador ${currentPlayer};
-    }
-
-    function resetGame() {
-      boardState = ["", "", "", "", "", "", "", "", ""];
-      gameActive = true;
-      currentPlayer = "X";
-      statusText.textContent = "Turno del Jugador X";
-      cells.forEach(cell => {
-        cell.textContent = "";
-        cell.classList.remove('x', 'o');
+    // Generar Estrellas o Bombas
+    function spawnItem() {
+      const isBomb = Math.random() < 0.25; // 25% de probabilidad de ser bomba
+      items.push({
+        x: Math.random() * (canvas.width - 30) + 15,
+        y: -20,
+        radius: 14,
+        speed: 2.5 + Math.random() * 2 + (score / 100), // Aumenta velocidad con el puntaje
+        type: isBomb ? 'bomb' : 'star'
       });
     }
+
+    // Iniciar Juego
+    function startGame() {
+      score = 0;
+      items = [];
+      spawnInterval = 45;
+      scoreEl.textContent = score;
+      isPlaying = true;
+      overlay.classList.add('hidden');
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Game Over
+    function gameOver() {
+      isPlaying = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('star_catcher_highscore', highScore);
+        highScoreEl.textContent = highScore;
+      }
+
+      gameTitle.textContent = "¡GAME OVER! 💥";
+      gameTitle.className = "text-3xl font-extrabold text-red-500";
+      gameInstructions.innerHTML = `Puntaje final: <strong class="text-amber-400 text-xl">${score}</strong><br>¡Tocaste una bomba!`;
+      startBtn.textContent = "VOLVER A INTENTAR";
+      overlay.classList.remove('hidden');
+    }
+
+    // Bucle Principal del Juego
+    function gameLoop() {
+      if (!isPlaying) return;
+
+      // Limpiar Canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Dibujar Fondo Estrellado Sencillo
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Movimiento con teclado
+      if (keys.right && player.x + player.width < canvas.width) player.x += player.speed;
+      if (keys.left && player.x > 0) player.x -= player.speed;
+
+      // Dibujar Jugador (Cesta)
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.roundRect(player.x, player.y, player.width, player.height, 10);
+      ctx.fill();
+
+      // Borde de la Cesta
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Generar Objetos
+      spawnTimer++;
+      if (spawnTimer >= spawnInterval) {
+        spawnItem();
+        spawnTimer = 0;
+        // Aumentar dificultad poco a poco
+        if (spawnInterval > 20) spawnInterval -= 0.2;
+      }
+
+      // Actualizar y Dibujar Objetos
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        item.y += item.speed;
+
+        // Dibujar Objeto
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.type === 'star' ? '🌟' : '💣', item.x, item.y);
+
+        // Detectar Colisión con la Cesta
+        if (
+          item.y + item.radius >= player.y &&
+          item.y - item.radius <= player.y + player.height &&
+          item.x >= player.x &&
+          item.x <= player.x + player.width
+        ) {
+          if (item.type === 'star') {
+            score += 10;
+            scoreEl.textContent = score;
+            items.splice(i, 1);
+            continue;
+          } else if (item.type === 'bomb') {
+            gameOver();
+            return;
+          }
+        }
+
+        // Eliminar objetos que salgan de la pantalla
+        if (item.y - item.radius > canvas.height) {
+          items.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    startBtn.addEventListener('click', startGame);
   </script>
 </body>
 </html>
