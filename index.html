@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minijuego - El Gato (Tres en Raya)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+    }
+
+    .status {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      color: #00ffcc;
+      font-weight: 600;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 25px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px 25px;
+      border-radius: 15px;
+      backdrop-filter: blur(5px);
+    }
+
+    .score {
+      text-align: center;
+    }
+
+    .score span {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .cell:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.03);
+    }
+
+    .cell.x {
+      color: #ff4757;
+      text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+    }
+
+    .cell.o {
+      color: #1e90ff;
+      text-shadow: 0 0 10px rgba(30, 144, 255, 0.8);
+    }
+
+    .btn-reset {
+      margin-top: 25px;
+      padding: 12px 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #1a1a2e;
+      background: #00ffcc;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0, 255, 204, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+      background: #00cca3;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 255, 204, 0.6);
+    }
+
+    .btn-reset:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎮 El Gato</h1>
+  <div class="status" id="status">Turno del Jugador X</div>
+
+  <div class="scoreboard">
+    <div class="score">Jugador X: <span id="scoreX">0</span></div>
+    <div class="score">Jugador O: <span id="scoreO">0</span></div>
+  </div>
+
+  <div class="board" id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <button class="btn-reset" onclick="resetGame()">Reiniciar Juego</button>
+
+  <script>
+    let boardState = ["", "", "", "", "", "", "", "", ""];
+    let currentPlayer = "X";
+    let gameActive = true;
+    let scoreX = 0;
+    let scoreO = 0;
+
+    const winningConditions = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    const cells = document.querySelectorAll('.cell');
+    const statusText = document.getElementById('status');
+
+    cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+
+    function handleCellClick(e) {
+      const clickedCell = e.target;
+      const index = parseInt(clickedCell.getAttribute('data-index'));
+
+      if (boardState[index] !== "" || !gameActive) return;
+
+      boardState[index] = currentPlayer;
+      clickedCell.textContent = currentPlayer;
+      clickedCell.classList.add(currentPlayer.toLowerCase());
+
+      checkResult();
+    }
+
+    function checkResult() {
+      let roundWon = false;
+
+      for (let i = 0; i < winningConditions.length; i++) {
+        const [a, b, c] = winningConditions[i];
+        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+          roundWon = true;
+          break;
+        }
+      }
+
+      if (roundWon) {
+        statusText.textContent = ¡El Jugador ${currentPlayer} ha ganado! 🎉;
+        gameActive = false;
+        if (currentPlayer === "X") {
+          scoreX++;
+          document.getElementById('scoreX').textContent = scoreX;
+        } else {
+          scoreO++;
+          document.getElementById('scoreO').textContent = scoreO;
+        }
+        return;
+      }
+
+      if (!boardState.includes("")) {
+        statusText.textContent = "¡Empate! 🤝";
+        gameActive = false;
+        return;
+      }
+
+      currentPlayer = currentPlayer === "X" ? "O" : "X";
+      statusText.textContent = Turno del Jugador ${currentPlayer};
+    }
+
+    function resetGame() {
+      boardState = ["", "", "", "", "", "", "", "", ""];
+      gameActive = true;
+      currentPlayer = "X";
+      statusText.textContent = "Turno del Jugador X";
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove('x', 'o');
+      });
+    }
+  </script>
+</body>
+</html>
