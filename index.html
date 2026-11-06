@@ -3,29 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Memoria Estelar de Abel 🌟</title>
+  <title>Atrapa las Estrellas de Abel 🌟</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
-      touch-action: manipulation;
+      touch-action: none;
       user-select: none;
+      -webkit-user-select: none;
       background-color: #030712;
     }
-    .card {
-      perspective: 1000px;
-    }
-    .card-inner {
-      transition: transform 0.4s;
-      transform-style: preserve-3d;
-    }
-    .card.flipped .card-inner {
-      transform: rotateY(180deg);
-    }
-    .card-front, .card-back {
-      backface-visibility: hidden;
-    }
-    .card-back {
-      transform: rotateY(180deg);
+    canvas {
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
     }
     @keyframes popUp {
       0% { transform: scale(0.5); opacity: 0; }
@@ -37,187 +26,319 @@
     }
   </style>
 </head>
-<body class="text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans relative">
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
 
-  <!-- Pantalla de Inicio / Menú (A prueba de fallos) -->
-  <div id="startScreen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center gap-6">
-    <h1 class="text-3xl sm:text-4xl font-black text-amber-400">✨ Memoria Estelar de Abel ✨</h1>
-    <p class="text-slate-300 text-sm max-w-sm leading-relaxed">
-      Encuentra las parejas de cartas ocultas. Al completarlo, desbloquearás los mensajes especiales dedicados a <strong class="text-amber-300">Natalia</strong>, <strong class="text-amber-300">Nery</strong>, <strong class="text-amber-300">Luis Enrique</strong> y <strong class="text-amber-300">Mari Yasmín</strong>.
-    </p>
-    <button onclick="iniciarJuego()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-full text-lg shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95 cursor-pointer">
-      ¡JUGAR AHORA!
-    </button>
+  <!-- Música de fondo: Claude Debussy (Piano clásico relajante) -->
+  <audio id="pianoAudio" loop preload="auto" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Claude_Debussy_-_Clair_de_lune_%28piano%29.ogg"></audio>
+
+  <!-- Mensaje Flotante de Hitos / Nombres Personalizados -->
+  <div id="achievementPopup" class="absolute top-4 z-50 pointer-events-none hidden transition-opacity duration-300 px-4">
+    <div class="bg-amber-400 border-2 border-amber-200 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-2xl text-sm sm:text-base text-center max-w-sm">
+      <span id="achievementText">¡Felicidades!</span>
+    </div>
   </div>
 
   <!-- Contenedor Principal del Juego -->
   <div class="w-full max-w-md flex flex-col items-center gap-4">
     
+    <!-- Encabezado -->
     <div class="text-center">
-      <h1 class="text-2xl font-extrabold text-amber-400">🌟 Memoria de Abel</h1>
-      <p id="statusMsg" class="text-xs text-slate-300 mt-1">Encuentra todas las parejas ocultas</p>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-amber-400 drop-shadow-md">🌟 Atrapa las Estrellas de Abel</h1>
+      <p class="text-xs sm:text-sm text-slate-300 mt-1">
+        Mueve la cesta con el <span class="text-amber-300 font-semibold">mouse</span>, <span class="text-amber-300 font-semibold">táctil</span> o <span class="text-amber-300 font-semibold">flechas (⬅️ ➡️)</span>.
+      </p>
     </div>
 
-    <!-- Panel de Intentos / Victorias -->
-    <div class="w-full bg-slate-800/90 border border-slate-700 rounded-xl p-3 flex justify-around items-center shadow-lg">
+    <!-- Panel de Puntuación -->
+    <div class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl p-3 flex justify-around items-center backdrop-blur-md shadow-lg">
       <div class="text-center">
-        <span class="text-xs uppercase text-slate-400 font-bold block">Intentos</span>
-        <span id="intentos" class="text-2xl font-black text-amber-400">0</span>
+        <span class="text-xs uppercase text-slate-400 font-bold block">Puntos</span>
+        <span id="score" class="text-2xl font-black text-amber-400">0</span>
       </div>
       <div class="h-8 w-px bg-slate-700"></div>
       <div class="text-center">
-        <span class="text-xs uppercase text-slate-400 font-bold block">Parejas</span>
-        <span id="parejas" class="text-2xl font-black text-emerald-400">0 / 6</span>
+        <span class="text-xs uppercase text-slate-400 font-bold block">Récord</span>
+        <span id="highScore" class="text-2xl font-black text-emerald-400">0</span>
       </div>
     </div>
 
-    <!-- Tablero de Cartas (Grilla 4x3) -->
-    <div id="gameBoard" class="grid grid-cols-3 gap-3 w-full max-w-[360px] aspect-[3/4] my-2">
-      <!-- Las cartas se generan dinámicamente con JavaScript -->
+    <!-- Lienzo y Pantalla de Inicio -->
+    <div class="relative w-full flex justify-center">
+      <canvas id="gameCanvas" class="bg-slate-950 w-full max-w-[380px] h-[430px] border border-slate-800"></canvas>
+
+      <!-- Pantalla de Inicio / Game Over (Con control de visibilidad directo por ID) -->
+      <div id="overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-4 z-30">
+        <div id="gameTitle" class="text-2xl sm:text-3xl font-black text-amber-400">¡Listo para jugar! ✨</div>
+        <p id="gameInstructions" class="text-slate-300 text-xs sm:text-sm max-w-xs leading-relaxed">
+          Atrapa las estrellas luminosas 🌟, esquiva las bombas 💣 y desbloquea los mensajes especiales.
+        </p>
+        <button id="startBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-full text-base sm:text-lg shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95 cursor-pointer">
+          ¡JUGAR AHORA!
+        </button>
+      </div>
     </div>
 
-    <!-- Botón de Reinicio -->
-    <button onclick="iniciarJuego()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-600 font-bold py-2 px-6 rounded-full text-sm transition cursor-pointer">
-      Reiniciar Partida
-    </button>
-
-  </div>
-
-  <!-- Ventana Flotante de Mensajes Especiales -->
-  <div id="modalMsg" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
-    <div class="bg-amber-400 border-2 border-amber-200 text-slate-950 font-black p-6 rounded-3xl shadow-2xl text-center max-w-sm animate-pop flex flex-col gap-4">
-      <div id="modalTexto" class="text-lg">¡Felicidades!</div>
-      <button onclick="cerrarModal()" class="bg-slate-950 text-amber-400 hover:bg-slate-900 py-2 px-6 rounded-full text-sm font-bold cursor-pointer">
-        ¡Continuar!
-      </button>
+    <!-- Leyenda -->
+    <div class="flex gap-6 text-xs text-slate-400 bg-slate-900/60 px-4 py-2 rounded-lg border border-slate-800">
+      <div class="flex items-center gap-1.5"><span class="text-base">🌟</span> +10 Puntos</div>
+      <div class="flex items-center gap-1.5"><span class="text-base">💣</span> Peligro</div>
     </div>
+
   </div>
 
   <script>
-    const emojis = ['🌟', '🎹', '🌙', '⭐', '🏆', '👑'];
-    let cartas = [];
-    let primeraCarta = null;
-    let segundaCarta = null;
-    let bloqueoTablero = false;
-    let intentos = 0;
-    let parejasEncontradas = 0;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const gameTitle = document.getElementById('gameTitle');
+    const gameInstructions = document.getElementById('gameInstructions');
+    const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('highScore');
+    const achievementPopup = document.getElementById('achievementPopup');
+    const achievementText = document.getElementById('achievementText');
+    const pianoAudio = document.getElementById('pianoAudio');
 
-    const startScreen = document.getElementById('startScreen');
-    const gameBoard = document.getElementById('gameBoard');
-    const intentosEl = document.getElementById('intentos');
-    const parejasEl = document.getElementById('parejas');
-    const modalMsg = document.getElementById('modalMsg');
-    const modalTexto = document.getElementById('modalTexto');
-    const statusMsg = document.getElementById('statusMsg');
+    canvas.width = 380;
+    canvas.height = 430;
 
-    function iniciarJuego() {
-      startScreen.style.display = 'none';
-      modalMsg.classList.add('hidden');
-      intentos = 0;
-      parejasEncontradas = 0;
-      intentosEl.textContent = intentos;
-      parejasEl.textContent = `${parejasEncontradas} / 6`;
-      statusMsg.textContent = "¡Encuentra todas las parejas!";
+    let isPlaying = false;
+    let score = 0;
+    let highScore = localStorage.getItem('star_catcher_abel_record') || 0;
+    highScoreEl.textContent = highScore;
 
-      // Duplicar emojis para hacer pares y barajarlos
-      cartas = [...emojis, ...emojis]
-        .sort(() => Math.random() - 0.5)
-        .map((emoji, index) => ({ id: index, emoji, volteada: false, encontrada: false }));
+    const player = {
+      width: 75,
+      height: 16,
+      x: canvas.width / 2 - 37,
+      y: canvas.height - 30,
+      speed: 9
+    };
 
-      renderizarTablero();
+    let items = [];
+    let spawnTimer = 0;
+    let spawnInterval = 40; 
+    let milestonesReached = { 100: false, 200: false, 300: false, 400: false, 500: false };
+    const keys = { right: false, left: false };
+
+    // --- CONTROLES ---
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+      if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+      if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    });
+
+    function updatePlayerPosition(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      player.x = (clientX - rect.left) * scaleX - player.width / 2;
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
     }
 
-    function renderizarTablero() {
-      gameBoard.innerHTML = '';
-      cartas.forEach((carta, index) => {
-        const cardElement = document.createElement('div');
-        cardElement.className = `card w-full h-full cursor-pointer ${carta.volteada || carta.encontrada ? 'flipped' : ''}`;
-        cardElement.innerHTML = `
-          <div class="card-inner relative w-full h-full rounded-xl shadow-md">
-            <div class="card-front absolute inset-0 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-2xl hover:bg-slate-700 transition">
-              ❓
-            </div>
-            <div class="card-back absolute inset-0 bg-slate-900 border-2 border-amber-400 rounded-xl flex items-center justify-center text-3xl">
-              ${carta.emoji}
-            </div>
-          </div>
-        `;
-        cardElement.addEventListener('click', () => voltearCarta(index));
-        gameBoard.appendChild(cardElement);
+    canvas.addEventListener('mousemove', (e) => {
+      if (isPlaying) updatePlayerPosition(e.clientX);
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (isPlaying && e.touches.length > 0) {
+        updatePlayerPosition(e.touches[0].clientX);
+      }
+    }, { passive: true });
+
+    // --- EFECTOS DE SONIDO NATIVOS (Web Audio API) ---
+    let audioCtx = null;
+    function playSoundEffect(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        if (type === 'star') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // Do
+          osc.frequency.exponentialRampToValueAtTime(1046.50, audioCtx.currentTime + 0.2); // Do alto
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        } else {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.35);
+          gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        }
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    // --- VERIFICACIÓN DE MENSAJES Y HITOS ---
+    function checkMilestones(currentScore) {
+      let message = "";
+      let hit = false;
+
+      if (currentScore === 100 && !milestonesReached[100]) {
+        milestonesReached[100] = true;
+        message = "¡Felicidades Abel! Eres un genio 🌟";
+        hit = true;
+      } else if (currentScore === 200 && !milestonesReached[200]) {
+        milestonesReached[200] = true;
+        message = "¡Felicidades Natalia Huamán Mendoza, llegaste a 200 puntos! 🎉";
+        hit = true;
+      } else if (currentScore === 300 && !milestonesReached[300]) {
+        milestonesReached[300] = true;
+        message = "¡Felicidades Nery, llegaste a 300 puntos! ⭐";
+        hit = true;
+      } else if (currentScore === 400 && !milestonesReached[400]) {
+        milestonesReached[400] = true;
+        message = "¡Felicidades Luis Enrique, llegaste a 400 puntos! 🏆";
+        hit = true;
+      } else if (currentScore === 500 && !milestonesReached[500]) {
+        milestonesReached[500] = true;
+        message = "¡Felicidades Mari Yasmín, llegaste a 500 puntos! 👑";
+        hit = true;
+      }
+
+      if (hit) {
+        achievementText.textContent = message;
+        achievementPopup.classList.remove('hidden');
+        achievementPopup.classList.add('animate-pop');
+        setTimeout(() => {
+          achievementPopup.classList.add('hidden');
+          achievementPopup.classList.remove('animate-pop');
+        }, 4500);
+      }
+    }
+
+    function spawnItem() {
+      const isBomb = Math.random() < 0.28;
+      items.push({
+        x: Math.random() * (canvas.width - 30) + 15,
+        y: -20,
+        radius: 14,
+        speed: 2.5 + Math.random() * 2 + (score / 110),
+        type: isBomb ? 'bomb' : 'star'
       });
     }
 
-    function voltearCarta(index) {
-      if (bloqueoTablero) return;
-      let cartaSeleccionada = cartas[index];
+    // --- INICIO DE PARTIDA (A prueba de fallos) ---
+    function startGame(e) {
+      if (e) e.preventDefault();
 
-      if (cartaSeleccionada.volteada || cartaSeleccionada.encontrada) return;
+      score = 0;
+      items = [];
+      spawnInterval = 40;
+      milestonesReached = { 100: false, 200: false, 300: false, 400: false, 500: false };
+      scoreEl.textContent = score;
+      isPlaying = true;
 
-      cartaSeleccionada.volteada = true;
-      renderizarTablero();
+      // Ocultar pantalla de inicio de forma directa
+      overlay.style.display = 'none';
 
-      if (!primeraCarta) {
-        primeraCarta = { index, emoji: cartaSeleccionada.emoji };
-      } else {
-        segundaCarta = { index, emoji: cartaSeleccionada.emoji };
-        verificarPareja();
-      }
+      // Reproducir música clásica de piano
+      pianoAudio.currentTime = 0;
+      pianoAudio.play().catch(err => console.log("Audio play error:", err));
+
+      requestAnimationFrame(gameLoop);
     }
 
-    function verificarPareja() {
-      intentos++;
-      intentosEl.textContent = intentos;
+    // Escuchar clics y toques en el botón de forma robusta
+    startBtn.addEventListener('click', startGame);
+    startBtn.addEventListener('touchend', startGame);
 
-      if (primeraCarta.emoji === segundaCarta.emoji) {
-        cartas[primeraCarta.index].encontrada = true;
-        cartas[segundaCarta.index].encontrada = true;
-        parejasEncontradas++;
-        parejasEl.textContent = `${parejasEncontradas} / 6`;
+    function gameOver() {
+      isPlaying = false;
+      pianoAudio.pause();
+      playSoundEffect('bomb');
 
-        reiniciarSeleccion();
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('star_catcher_abel_record', highScore);
+        highScoreEl.textContent = highScore;
+      }
 
-        // Disparar mensajes especiales progresivos
-        if (parejasEncontradas === 1) {
-          mostrarMensaje("¡Felicidades Abel! Eres un genio 🌟");
-        } else if (parejasEncontradas === 2) {
-          mostrarMensaje("¡Felicidades Natalia Huamán Mendoza, vas excelente! 🎉");
-        } else if (parejasEncontradas === 3) {
-          mostrarMensaje("¡Felicidades Nery, mitad del camino lograda! ⭐");
-        } else if (parejasEncontradas === 4) {
-          mostrarMensaje("¡Felicidades Luis Enrique, gran concentración! 🏆");
-        } else if (parejasEncontradas === 5) {
-          mostrarMensaje("¡Felicidades Mari Yasmín, a un paso de la gloria! 👑");
-        } else if (parejasEncontradas === 6) {
-          statusMsg.textContent = "¡Juego completado con éxito! 🎉";
-          setTimeout(() => {
-            mostrarMensaje("🏆 ¡Increíble! Has ganado la partida y completado todos los honores.");
-          }, 400);
+      gameTitle.textContent = "¡FIN DEL JUEGO! 💥";
+      gameTitle.className = "text-2xl sm:text-3xl font-black text-red-500";
+      gameInstructions.innerHTML = `Puntaje obtenido: <strong class="text-amber-400 text-lg">${score}</strong><br>¡Toca el botón para reintentar!`;
+      overlay.style.display = 'flex'; // Mostrar overlay de nuevo
+    }
+
+    function gameLoop() {
+      if (!isPlaying) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Fondo
+      ctx.fillStyle = '#030712';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Movimiento de la cesta con teclado
+      if (keys.right && player.x + player.width < canvas.width) player.x += player.speed;
+      if (keys.left && player.x > 0) player.x -= player.speed;
+
+      // Dibujar cesta
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.roundRect(player.x, player.y, player.width, player.height, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Generar objetos
+      spawnTimer++;
+      if (spawnTimer >= spawnInterval) {
+        spawnItem();
+        spawnTimer = 0;
+        if (spawnInterval > 18) spawnInterval -= 0.2;
+      }
+
+      // Actualizar posición de objetos
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        item.y += item.speed;
+
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.type === 'star' ? '🌟' : '💣', item.x, item.y);
+
+        // Colisión
+        if (
+          item.y + item.radius >= player.y &&
+          item.y - item.radius <= player.y + player.height &&
+          item.x >= player.x &&
+          item.x <= player.x + player.width
+        ) {
+          if (item.type === 'star') {
+            score += 10;
+            scoreEl.textContent = score;
+            playSoundEffect('star');
+            checkMilestones(score);
+            items.splice(i, 1);
+            continue;
+          } else if (item.type === 'bomb') {
+            gameOver();
+            return;
+          }
         }
 
-      } else {
-        bloqueoTablero = true;
-        setTimeout(() => {
-          cartas[primeraCarta.index].volteada = false;
-          cartas[segundaCarta.index].volteada = false;
-          reiniciarSeleccion();
-          renderizarTablero();
-        }, 800);
+        // Fuera de pantalla
+        if (item.y - item.radius > canvas.height) {
+          items.splice(i, 1);
+        }
       }
-    }
 
-    function reiniciarSeleccion() {
-      primeraCarta = null;
-      segundaCarta = null;
-      bloqueoTablero = false;
-    }
-
-    function mostrarMensaje(texto) {
-      modalTexto.textContent = texto;
-      modalMsg.classList.remove('hidden');
-    }
-
-    function cerrarModal() {
-      modalMsg.classList.add('hidden');
+      requestAnimationFrame(gameLoop);
     }
   </script>
 </body>
