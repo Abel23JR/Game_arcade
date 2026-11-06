@@ -9,6 +9,7 @@
     body {
       touch-action: none;
       user-select: none;
+      -webkit-user-select: none;
     }
     canvas {
       border-radius: 16px;
@@ -26,9 +27,12 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans relative">
 
-  <!-- Mensaje Flotante de Logros Personalizados -->
+  <!-- Elemento de Audio Nativo para la Música de Piano de Fondo -->
+  <audio id="bgmAudio" loop preload="auto" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Gymnop%C3%A9die_No._1_%28Kevin_MacLeod%29.ogg"></audio>
+
+  <!-- Mensaje Flotante en Pantalla para los Nombres -->
   <div id="achievementPopup" class="absolute top-6 z-50 pointer-events-none hidden transition-opacity duration-300">
-    <div class="bg-amber-500/90 border-2 border-amber-300 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-xl shadow-amber-500/40 text-base sm:text-lg text-center backdrop-blur-md max-w-sm">
+    <div class="bg-amber-500/90 border-2 border-amber-300 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-xl shadow-amber-500/40 text-base sm:text-lg text-center backdrop-blur-md max-w-xs sm:max-w-sm">
       <span id="achievementText">¡Felicidades!</span>
     </div>
   </div>
@@ -61,13 +65,13 @@
     <div class="relative w-full flex justify-center">
       <canvas id="gameCanvas" class="bg-slate-950 w-full max-w-[400px] h-[450px]"></canvas>
 
-      <!-- Pantalla de Inicio / Game Over Personalizada -->
-      <div id="overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-4">
+      <!-- Pantalla de Inicio / Game Over -->
+      <div id="overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-4 z-20">
         <div id="gameTitle" class="text-3xl font-extrabold text-amber-400">¡Juego de Abel! 🌟</div>
         <p id="gameInstructions" class="text-slate-200 text-sm max-w-xs">
-          Atrapa todas las estrellas posibles, evita las bombas 💣 y desbloquea los mensajes especiales con piano y voz.
+          Atrapa las estrellas 🌟, evita las bombas 💣 y desbloquea los mensajes especiales con música de piano.
         </p>
-        <button id="startBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-full text-lg shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95">
+        <button id="startBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-full text-lg shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95 cursor-pointer">
           ¡JUGAR AHORA!
         </button>
       </div>
@@ -76,7 +80,7 @@
     <!-- Leyenda de Objetos -->
     <div class="flex gap-6 text-xs text-slate-400 bg-slate-800/40 px-4 py-2 rounded-lg border border-slate-800">
       <div class="flex items-center gap-1.5">
-        <span class="text-base">🌟</span> +10 Puntos (Piano + Voz)
+        <span class="text-base">🌟</span> +10 Puntos
       </div>
       <div class="flex items-center gap-1.5">
         <span class="text-base">💣</span> Fin del Juego
@@ -96,83 +100,73 @@
     const highScoreEl = document.getElementById('highScore');
     const achievementPopup = document.getElementById('achievementPopup');
     const achievementText = document.getElementById('achievementText');
+    const bgmAudio = document.getElementById('bgmAudio');
 
-    // --- SINTETIZADOR DE PIANO (Web Audio API) ---
+    // --- EFECTOS DE SONIDO CORTOS (Web Audio API) ---
     let audioCtx = null;
 
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+    function initAudioContext() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      } catch (e) {}
     }
 
     const pianoNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
 
-    function playPianoNote(frequency) {
+    function playShortNote(freq) {
       if (!audioCtx) return;
       try {
         const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+        const gain = audioCtx.createGain();
 
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
 
-        gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
 
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.8);
+        osc.stop(audioCtx.currentTime + 0.4);
       } catch (e) {}
     }
 
-    // Acorde alegre de piano para los hitos
-    function playMilestoneChord() {
+    function playMilestoneSound() {
       if (!audioCtx) return;
-      setTimeout(() => playPianoNote(523.25), 0);
-      setTimeout(() => playPianoNote(659.25), 100);
-      setTimeout(() => playPianoNote(783.99), 200);
-      setTimeout(() => playPianoNote(1046.50), 300);
+      setTimeout(() => playShortNote(523.25), 0);
+      setTimeout(() => playShortNote(659.25), 100);
+      setTimeout(() => playShortNote(783.99), 200);
+      setTimeout(() => playShortNote(1046.50), 300);
     }
 
     function playBombSound() {
       if (!audioCtx) return;
       try {
         const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+        const gain = audioCtx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.4);
+        osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.4);
 
-        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
 
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
         osc.start();
         osc.stop(audioCtx.currentTime + 0.4);
-      } catch(e) {}
+      } catch (e) {}
     }
 
-    // --- SÍNTESIS DE VOZ (Speech Synthesis) ---
-    function speakText(text) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'es-ES';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.1;
-        window.speechSynthesis.speak(utterance);
-      }
-    }
-
-    // --- LÓGICA DE HITOS Y NOMBRES PERSONALIZADOS ---
+    // --- GESTIÓN DE HITOS Y MENSAJES ---
     let milestonesReached = {
       100: false,
       200: false,
@@ -187,52 +181,52 @@
 
       if (currentScore === 100 && !milestonesReached[100]) {
         milestonesReached[100] = true;
-        message = "¡Felicidades Abel! Eres un genio";
+        message = "¡Felicidades Abel! Eres un genio 🌟";
         hit = true;
       } else if (currentScore === 200 && !milestonesReached[200]) {
         milestonesReached[200] = true;
-        message = "¡Felicidades Natalia Huamán Mendoza, llegaste a 200 puntos!";
+        message = "¡Felicidades Natalia Huamán Mendoza, llegaste a 200 puntos! 🎉";
         hit = true;
       } else if (currentScore === 300 && !milestonesReached[300]) {
         milestonesReached[300] = true;
-        message = "¡Felicidades Nery, llegaste a 300 puntos!";
+        message = "¡Felicidades Nery, llegaste a 300 puntos! ⭐";
         hit = true;
       } else if (currentScore === 400 && !milestonesReached[400]) {
         milestonesReached[400] = true;
-        message = "¡Felicidades Luis Enrique, llegaste a 400 puntos!";
+        message = "¡Felicidades Luis Enrique, llegaste a 400 puntos! 🏆";
         hit = true;
       } else if (currentScore === 500 && !milestonesReached[500]) {
         milestonesReached[500] = true;
-        message = "¡Felicidades Mari Yasmín, llegaste a 500 puntos!";
+        message = "¡Felicidades Mari Yasmín, llegaste a 500 puntos! 👑";
         hit = true;
       }
 
       if (hit) {
         showAchievement(message);
-        playMilestoneChord();
-        speakText(message);
+        playMilestoneSound();
       }
     }
 
+    let popupTimeout = null;
     function showAchievement(text) {
+      if (popupTimeout) clearTimeout(popupTimeout);
       achievementText.textContent = text;
       achievementPopup.classList.remove('hidden');
       achievementPopup.classList.add('animate-pop');
 
-      setTimeout(() => {
+      popupTimeout = setTimeout(() => {
         achievementPopup.classList.add('hidden');
         achievementPopup.classList.remove('animate-pop');
-      }, 4000);
+      }, 4500);
     }
 
-    // Ajustar dimensiones internas del canvas
+    // --- CONFIGURACIÓN DEL CANVAS Y JUEGO ---
     function resizeCanvas() {
       canvas.width = 400;
       canvas.height = 450;
     }
     resizeCanvas();
 
-    // Estado del Juego
     let isPlaying = false;
     let score = 0;
     let highScore = localStorage.getItem('star_catcher_highscore') || 0;
@@ -243,8 +237,7 @@
       height: 18,
       x: canvas.width / 2 - 35,
       y: canvas.height - 35,
-      speed: 7,
-      dx: 0
+      speed: 8
     };
 
     let items = [];
@@ -281,7 +274,7 @@
       if (isPlaying && e.touches.length > 0) {
         updatePlayerPosition(e.touches[0].clientX);
       }
-    });
+    }, { passive: true });
 
     function spawnItem() {
       const isBomb = Math.random() < 0.25;
@@ -289,13 +282,18 @@
         x: Math.random() * (canvas.width - 30) + 15,
         y: -20,
         radius: 14,
-        speed: 2.5 + Math.random() * 2 + (score / 120),
+        speed: 2.8 + Math.random() * 2 + (score / 100),
         type: isBomb ? 'bomb' : 'star'
       });
     }
 
     function startGame() {
-      initAudio();
+      initAudioContext();
+      
+      // Reproducir música de fondo de manera segura con el clic del botón
+      bgmAudio.currentTime = 0;
+      bgmAudio.play().catch(err => console.log("Audio play blocked:", err));
+
       score = 0;
       items = [];
       spawnInterval = 45;
@@ -308,7 +306,9 @@
 
     function gameOver() {
       isPlaying = false;
+      bgmAudio.pause(); // Pausar la música al perder
       playBombSound();
+      
       if (score > highScore) {
         highScore = score;
         localStorage.setItem('star_catcher_highscore', highScore);
@@ -369,7 +369,7 @@
             scoreEl.textContent = score;
             
             const noteIndex = Math.floor((score / 10) % pianoNotes.length);
-            playPianoNote(pianoNotes[noteIndex]);
+            playShortNote(pianoNotes[noteIndex]);
 
             checkMilestones(score);
 
