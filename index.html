@@ -1,10 +1,9 @@
-html
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Atrapa las Estrellas 🌟</title>
+  <title>Atrapa las Estrellas de Abel 🌟</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -15,16 +14,31 @@ html
       border-radius: 16px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     }
+    @keyframes popUp {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans relative">
+
+  <!-- Mensaje Flotante de Logros Personalizados -->
+  <div id="achievementPopup" class="absolute top-6 z-50 pointer-events-none hidden transition-opacity duration-300">
+    <div class="bg-amber-500/90 border-2 border-amber-300 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-xl shadow-amber-500/40 text-base sm:text-lg text-center backdrop-blur-md max-w-sm">
+      <span id="achievementText">¡Felicidades!</span>
+    </div>
+  </div>
 
   <!-- Contenedor Principal -->
   <div class="w-full max-w-md flex flex-col items-center gap-4">
     
-    <!-- Encabezado con Instrucciones -->
+    <!-- Encabezado con Toque Personal -->
     <div class="text-center">
-      <h1 class="text-3xl font-bold text-amber-400 drop-shadow-md">🌟 Atrapa las Estrellas</h1>
+      <h1 class="text-3xl font-bold text-amber-400 drop-shadow-md">🌟 Atrapa las Estrellas de Abel</h1>
       <p class="text-sm text-slate-300 mt-1">
         Mueve la cesta con el <span class="text-amber-300 font-semibold">mouse</span>, <span class="text-amber-300 font-semibold">pantalla táctil</span> o las <span class="text-amber-300 font-semibold">flechas (⬅️ ➡️)</span>.
       </p>
@@ -47,11 +61,11 @@ html
     <div class="relative w-full flex justify-center">
       <canvas id="gameCanvas" class="bg-slate-950 w-full max-w-[400px] h-[450px]"></canvas>
 
-      <!-- Pantalla de Inicio / Game Over -->
+      <!-- Pantalla de Inicio / Game Over Personalizada -->
       <div id="overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center gap-4">
-        <div id="gameTitle" class="text-3xl font-extrabold text-amber-400">¡Listo para jugar!</div>
+        <div id="gameTitle" class="text-3xl font-extrabold text-amber-400">¡Juego de Abel! 🌟</div>
         <p id="gameInstructions" class="text-slate-200 text-sm max-w-xs">
-          Atrapa todas las <strong class="text-amber-300">estrellas 🌟</strong> que puedas y evita las <strong class="text-red-400">bombas 💣</strong>.
+          Atrapa todas las estrellas posibles, evita las bombas 💣 y desbloquea los mensajes especiales con piano y voz.
         </p>
         <button id="startBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-full text-lg shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95">
           ¡JUGAR AHORA!
@@ -62,7 +76,7 @@ html
     <!-- Leyenda de Objetos -->
     <div class="flex gap-6 text-xs text-slate-400 bg-slate-800/40 px-4 py-2 rounded-lg border border-slate-800">
       <div class="flex items-center gap-1.5">
-        <span class="text-base">🌟</span> +10 Puntos
+        <span class="text-base">🌟</span> +10 Puntos (Piano + Voz)
       </div>
       <div class="flex items-center gap-1.5">
         <span class="text-base">💣</span> Fin del Juego
@@ -80,6 +94,136 @@ html
     const gameInstructions = document.getElementById('gameInstructions');
     const scoreEl = document.getElementById('score');
     const highScoreEl = document.getElementById('highScore');
+    const achievementPopup = document.getElementById('achievementPopup');
+    const achievementText = document.getElementById('achievementText');
+
+    // --- SINTETIZADOR DE PIANO (Web Audio API) ---
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    const pianoNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+
+    function playPianoNote(frequency) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.8);
+      } catch (e) {}
+    }
+
+    // Acorde alegre de piano para los hitos
+    function playMilestoneChord() {
+      if (!audioCtx) return;
+      setTimeout(() => playPianoNote(523.25), 0);
+      setTimeout(() => playPianoNote(659.25), 100);
+      setTimeout(() => playPianoNote(783.99), 200);
+      setTimeout(() => playPianoNote(1046.50), 300);
+    }
+
+    function playBombSound() {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.4);
+
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch(e) {}
+    }
+
+    // --- SÍNTESIS DE VOZ (Speech Synthesis) ---
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // --- LÓGICA DE HITOS Y NOMBRES PERSONALIZADOS ---
+    let milestonesReached = {
+      100: false,
+      200: false,
+      300: false,
+      400: false,
+      500: false
+    };
+
+    function checkMilestones(currentScore) {
+      let message = "";
+      let hit = false;
+
+      if (currentScore === 100 && !milestonesReached[100]) {
+        milestonesReached[100] = true;
+        message = "¡Felicidades Abel! Eres un genio";
+        hit = true;
+      } else if (currentScore === 200 && !milestonesReached[200]) {
+        milestonesReached[200] = true;
+        message = "¡Felicidades Natalia Huamán Mendoza, llegaste a 200 puntos!";
+        hit = true;
+      } else if (currentScore === 300 && !milestonesReached[300]) {
+        milestonesReached[300] = true;
+        message = "¡Felicidades Nery, llegaste a 300 puntos!";
+        hit = true;
+      } else if (currentScore === 400 && !milestonesReached[400]) {
+        milestonesReached[400] = true;
+        message = "¡Felicidades Luis Enrique, llegaste a 400 puntos!";
+        hit = true;
+      } else if (currentScore === 500 && !milestonesReached[500]) {
+        milestonesReached[500] = true;
+        message = "¡Felicidades Mari Yasmín, llegaste a 500 puntos!";
+        hit = true;
+      }
+
+      if (hit) {
+        showAchievement(message);
+        playMilestoneChord();
+        speakText(message);
+      }
+    }
+
+    function showAchievement(text) {
+      achievementText.textContent = text;
+      achievementPopup.classList.remove('hidden');
+      achievementPopup.classList.add('animate-pop');
+
+      setTimeout(() => {
+        achievementPopup.classList.add('hidden');
+        achievementPopup.classList.remove('animate-pop');
+      }, 4000);
+    }
 
     // Ajustar dimensiones internas del canvas
     function resizeCanvas() {
@@ -94,7 +238,6 @@ html
     let highScore = localStorage.getItem('star_catcher_highscore') || 0;
     highScoreEl.textContent = highScore;
 
-    // Configuración de la Cesta (Jugador)
     const player = {
       width: 70,
       height: 18,
@@ -104,15 +247,12 @@ html
       dx: 0
     };
 
-    // Colecciones de Objetos
     let items = [];
     let spawnTimer = 0;
-    let spawnInterval = 45; // Frecuencia con la que caen los objetos
+    let spawnInterval = 45; 
 
-    // Teclado
     const keys = { right: false, left: false };
 
-    // Eventos de Controles
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
       if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
@@ -123,14 +263,12 @@ html
       if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
     });
 
-    // Control con Mouse / Pantalla Táctil
     function updatePlayerPosition(clientX) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const canvasX = (clientX - rect.left) * scaleX;
       player.x = canvasX - player.width / 2;
       
-      // Mantener dentro del canvas
       if (player.x < 0) player.x = 0;
       if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
     }
@@ -145,32 +283,32 @@ html
       }
     });
 
-    // Generar Estrellas o Bombas
     function spawnItem() {
-      const isBomb = Math.random() < 0.25; // 25% de probabilidad de ser bomba
+      const isBomb = Math.random() < 0.25;
       items.push({
         x: Math.random() * (canvas.width - 30) + 15,
         y: -20,
         radius: 14,
-        speed: 2.5 + Math.random() * 2 + (score / 100), // Aumenta velocidad con el puntaje
+        speed: 2.5 + Math.random() * 2 + (score / 120),
         type: isBomb ? 'bomb' : 'star'
       });
     }
 
-    // Iniciar Juego
     function startGame() {
+      initAudio();
       score = 0;
       items = [];
       spawnInterval = 45;
+      milestonesReached = { 100: false, 200: false, 300: false, 400: false, 500: false };
       scoreEl.textContent = score;
       isPlaying = true;
       overlay.classList.add('hidden');
       requestAnimationFrame(gameLoop);
     }
 
-    // Game Over
     function gameOver() {
       isPlaying = false;
+      playBombSound();
       if (score > highScore) {
         highScore = score;
         localStorage.setItem('star_catcher_highscore', highScore);
@@ -179,58 +317,47 @@ html
 
       gameTitle.textContent = "¡GAME OVER! 💥";
       gameTitle.className = "text-3xl font-extrabold text-red-500";
-      gameInstructions.innerHTML = `Puntaje final: <strong class="text-amber-400 text-xl">${score}</strong><br>¡Tocaste una bomba!`;
+      gameInstructions.innerHTML = Puntaje final: <strong class="text-amber-400 text-xl">${score}</strong><br>¡Tocaste una bomba!;
       startBtn.textContent = "VOLVER A INTENTAR";
       overlay.classList.remove('hidden');
     }
 
-    // Bucle Principal del Juego
     function gameLoop() {
       if (!isPlaying) return;
 
-      // Limpiar Canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Dibujar Fondo Estrellado Sencillo
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Movimiento con teclado
       if (keys.right && player.x + player.width < canvas.width) player.x += player.speed;
       if (keys.left && player.x > 0) player.x -= player.speed;
 
-      // Dibujar Jugador (Cesta)
       ctx.fillStyle = '#38bdf8';
       ctx.beginPath();
       ctx.roundRect(player.x, player.y, player.width, player.height, 10);
       ctx.fill();
 
-      // Borde de la Cesta
       ctx.strokeStyle = '#e0f2fe';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Generar Objetos
       spawnTimer++;
       if (spawnTimer >= spawnInterval) {
         spawnItem();
         spawnTimer = 0;
-        // Aumentar dificultad poco a poco
         if (spawnInterval > 20) spawnInterval -= 0.2;
       }
 
-      // Actualizar y Dibujar Objetos
       for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
         item.y += item.speed;
 
-        // Dibujar Objeto
         ctx.font = '22px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(item.type === 'star' ? '🌟' : '💣', item.x, item.y);
 
-        // Detectar Colisión con la Cesta
         if (
           item.y + item.radius >= player.y &&
           item.y - item.radius <= player.y + player.height &&
@@ -240,6 +367,12 @@ html
           if (item.type === 'star') {
             score += 10;
             scoreEl.textContent = score;
+            
+            const noteIndex = Math.floor((score / 10) % pianoNotes.length);
+            playPianoNote(pianoNotes[noteIndex]);
+
+            checkMilestones(score);
+
             items.splice(i, 1);
             continue;
           } else if (item.type === 'bomb') {
@@ -248,7 +381,6 @@ html
           }
         }
 
-        // Eliminar objetos que salgan de la pantalla
         if (item.y - item.radius > canvas.height) {
           items.splice(i, 1);
         }
